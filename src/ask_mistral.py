@@ -1,5 +1,6 @@
 import numpy as np
 from embed_documents import get_text_embedding
+import time
 
 # def get_text_embedding(input_text):
 #     """
@@ -22,6 +23,7 @@ def query_with_context(client, question, extracted_text_folder, index, metadata,
     """
     # Get the embedding of the question
     question_embedding = get_text_embedding(client, question)
+    time.sleep(2)
 
     # Perform similarity search
     _, indices = index.search(np.array([question_embedding], dtype="float32"), top_k)
@@ -51,8 +53,8 @@ def ask_question(client, prompt, extracted_text_folder, index, metadata, top_k):
     contexts = ""
     # print("Relevant Chunks:")
     for chunk in relevant_chunks:
-        # print(f"Document name: {chunk['doc_name']}:\nChunk content: {chunk['chunk']}")
-        contexts += f"Document name: {chunk['doc_name']}, Chunk content: {chunk['chunk']}\n"
+        contexts += f"Document name: {chunk['doc_name']}, Chunk content: \n{chunk['chunk']}\n"
+    print(f"List of documents:\n{contexts}")
 
     # Mistral answer with context 
     chat_response = client.chat.complete(
@@ -60,7 +62,7 @@ def ask_question(client, prompt, extracted_text_folder, index, metadata, top_k):
         messages = [
             {
                 "role": "system",
-                "content": f"You are a cybersecurity expert that will answer question to users. The following are context chunks from the database related to the question:\n{contexts}. Always source information using document names.",
+                "content": f"You are a cybersecurity expert that will answer question to users. The following are context chunks from the database related to the question:\n{contexts}. Always source information using document names, do not mention those chunks.",
             },
             {
                 "role": "user",

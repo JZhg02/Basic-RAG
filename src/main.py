@@ -19,7 +19,7 @@ os.makedirs(index_folder, exist_ok=True)
 
 api_key = os.environ["MISTRAL_API_KEY"]
 dimension = 1024 # Embedding vector size (mistral-embed model only accepts 1024)
-top_k = 4  # Number of relevant chunks to retrieve
+top_k = 10  # Number of relevant chunks to retrieve
 
 
 # ================= User Pormpt ================= 
