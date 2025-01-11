@@ -11,6 +11,11 @@ def calculate_document_hash(text):
     return hashlib.md5(text.encode('utf-8')).hexdigest()
 
 
+# Normalization function
+def normalize_vector(vec):
+    return vec / np.linalg.norm(vec)
+
+
 # Function to load text chunks and their metadata
 def load_text_chunks_with_metadata(folder_path):
     """
@@ -51,7 +56,8 @@ def create_faiss_index_and_embeddings_if_not_exists(client, faiss_index_file, me
     if os.path.exists(faiss_index_file):
         index = faiss.read_index(faiss_index_file)
     else:
-        index = faiss.IndexFlatL2(dimension) # Euclidean distance
+        # index = faiss.IndexFlatL2(dimension) # Euclidean distance
+        index = faiss.IndexFlatIP(dimension)  # Inner Product (for cosine similarity)
 
     # Load metadata if it exists
     if os.path.exists(metadata_file):
@@ -78,6 +84,7 @@ def create_faiss_index_and_embeddings_if_not_exists(client, faiss_index_file, me
         # Check if already embedded
         if doc_hash not in metadata:
             embedding = get_text_embedding(client, chunk)
+            embedding = normalize_vector(np.array(embedding, dtype="float32"))  # Normalize the embedding
             time.sleep(2)
             index.add(np.array([embedding], dtype="float32"))  # Add to FAISS
 
