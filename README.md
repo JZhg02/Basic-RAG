@@ -5,7 +5,9 @@ Basic RAG with FAISS and Mistral API
 ```
 python -m venv venv
 ```
-
+```
+venv/Scripts/activate
+```
 ## Requirements
 ```
 pip install -r requirements.txt
