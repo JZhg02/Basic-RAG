@@ -18,7 +18,7 @@ def extract_text_by_paragraph(pdf_path, min_chunk_size=512):
     seen_paragraphs = set()
 
     with fitz.open(pdf_path) as doc:
-        for page in doc:
+        for page_number, page in enumerate(doc, start=1):
             text_blocks = page.get_text("blocks")
             current_paragraph = ""
 
@@ -34,7 +34,7 @@ def extract_text_by_paragraph(pdf_path, min_chunk_size=512):
                     if block_text.endswith(('.','?','!')):
                         paragraph = current_paragraph.strip()
                         if paragraph not in seen_paragraphs:
-                            paragraphs.append(paragraph)
+                            paragraphs.append((page_number, paragraph))
                             seen_paragraphs.add(paragraph)
                         current_paragraph = ""
 
@@ -42,26 +42,32 @@ def extract_text_by_paragraph(pdf_path, min_chunk_size=512):
             if current_paragraph:
                 paragraph = current_paragraph.strip()
                 if paragraph not in seen_paragraphs:
-                    paragraphs.append(paragraph)
+                    paragraphs.append((page_number, paragraph))
                     seen_paragraphs.add(paragraph)
 
     # Merge paragraphs to meet the minimum chunk size
     merged_paragraphs = []
     current_chunk = ""
+    current_pages = []
 
-    for paragraph in paragraphs:
+    for page_number, paragraph in paragraphs:
         if len(current_chunk) < min_chunk_size:
             if current_chunk:
                 current_chunk += " " + paragraph
             else:
                 current_chunk = paragraph
+            # Add page number
+            if page_number not in current_pages:
+                current_pages.append(page_number)
         else:
-            merged_paragraphs.append(current_chunk.strip())
+            page_range = f"{current_pages[0]}-{current_pages[-1]}" if len(current_pages) > 1 else str(current_pages[0])
+            merged_paragraphs.append((page_range, current_chunk.strip()))
             current_chunk = paragraph
+            current_pages = [page_number]
 
     # Append the last chunk
     if current_chunk:
-        merged_paragraphs.append(current_chunk.strip())
+        merged_paragraphs.append((page_number, current_chunk.strip()))
 
     return merged_paragraphs
 
@@ -76,12 +82,14 @@ def extract_text_from_each_document(documents_folder, extracted_text_folder):
             paragraphs = extract_text_by_paragraph(pdf_path)
 
             # Save each paragraph to an individual text file
-            for i, paragraph in enumerate(paragraphs):
+            for i, (pages, paragraph) in enumerate(paragraphs):
                 os.makedirs(f"{extracted_text_folder}/{filename.strip(".pdf")}", exist_ok=True)
-                txt_filename = f"{filename.strip(".pdf")}/{os.path.splitext(filename)[0]}_paragraph_{i + 1}.txt"
+                txt_filename = f"{filename.strip(".pdf")}/{os.path.splitext(filename)[0]}_p{i + 1}.txt"
                 txt_path = os.path.join(extracted_text_folder, txt_filename)
 
                 with open(txt_path, "w", encoding="utf-8") as txt_file:
-                    txt_file.write(paragraph)
+                    txt_file.write(f"{filename}\n")  # First line: Document name
+                    txt_file.write(f"{pages}\n")  # Second line: Page number
+                    txt_file.write(f"{paragraph}\n")  # Third line onwards: Paragraph content
 
     print("Text extraction completed. Paragraphs saved in extracted_text/ folder.")
