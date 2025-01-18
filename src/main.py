@@ -6,6 +6,15 @@ from mistralai import Mistral
 from dotenv import load_dotenv
 import faiss
 import json
+import time
+from transformers import AutoTokenizer, AutoModel # initializing a Hugging Face model globally in embed_documents.py, and the multiprocessing module conflicts with this
+from transformers import logging
+
+# Set the logging level to ERROR to suppress warnings
+logging.set_verbosity_error() 
+# Warning: 
+# Some weights of RobertaModel were not initialized from the model checkpoint at SynamicTechnologies/CYBERT and are newly initialized: ['roberta.pooler.dense.bias', 'roberta.pooler.dense.weight']
+# You should probably TRAIN this model on a down-stream task to be able to use it for predictions and inference.
 
 load_dotenv()
 
@@ -18,23 +27,28 @@ index_folder = "data/faiss_vector_base/"
 os.makedirs(index_folder, exist_ok=True) 
 
 api_key = os.environ["MISTRAL_API_KEY"]
-dimension = 1024 # Embedding vector size (mistral-embed model only accepts 1024)
+dimension = 768 # Embedding vector size 
 top_k = 10  # Number of relevant chunks to retrieve
 
 
 # ================= User Pormpt ================= 
 prompt = "What are the primary objectives of the HIPAA Security Rule in protecting electronic protected health information (ePHI)?"
+# prompt = "Does the chunks help answer the following question: 'What are the primary objectives of the HIPAA Security Rule in protecting electronic protected health information (ePHI)?'"
+# prompt = "give me some guidelines for Information Technology equipment."
 # ===============================================
 
 
 def main():
+    # Load the tokenizer and model from Hugging Face
+    tokenizer = AutoTokenizer.from_pretrained("sentence-transformers/multi-qa-mpnet-base-cos-v1")
+    model = AutoModel.from_pretrained("sentence-transformers/multi-qa-mpnet-base-cos-v1") 
+    
     pdf_to_text.extract_text_from_each_document(documents_folder=documents_folder, extracted_text_folder=extracted_text_folder)
     
     faiss_index_file = os.path.join(index_folder, "faiss_index_with_metadata.bin")
     metadata_file = os.path.join(index_folder, "metadata.json")
 
-    client = Mistral(api_key=api_key)
-    embed_documents.create_faiss_index_and_embeddings_if_not_exists(client=client, faiss_index_file=faiss_index_file, metadata_file=metadata_file, extracted_text_folder=extracted_text_folder, dimension=dimension)
+    embed_documents.create_faiss_index_and_embeddings_if_not_exists(tokenizer=tokenizer, embeddings_model=model, faiss_index_file=faiss_index_file, metadata_file=metadata_file, extracted_text_folder=extracted_text_folder, dimension=dimension)
 
     # Load FAISS index
     if not os.path.exists(faiss_index_file):
@@ -46,7 +60,8 @@ def main():
     with open(metadata_file, "r") as f:
         metadata = json.load(f)
 
-    answer = ask_mistral.ask_question(client=client, prompt=prompt, index=index, metadata=metadata, extracted_text_folder=extracted_text_folder, top_k=top_k)
+    client = Mistral(api_key=api_key)
+    answer = ask_mistral.ask_question(chat_client=client, tokenizer=tokenizer, embeddings_model=model, prompt=prompt, index=index, metadata=metadata, extracted_text_folder=extracted_text_folder, top_k=top_k)
     print(f"LLM answer:\n{answer}")
 
 if __name__ == "__main__":
