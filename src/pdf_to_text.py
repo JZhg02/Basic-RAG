@@ -60,13 +60,15 @@ def extract_text_by_paragraph(pdf_path, min_chunk_size=512):
             if page_number not in current_pages:
                 current_pages.append(page_number)
         else:
+            current_pages.append(page_number)
             page_range = f"{current_pages[0]}-{current_pages[-1]}" if len(current_pages) > 1 else str(current_pages[0])
-            merged_paragraphs.append((page_range, current_chunk.strip()))
+            if current_chunk not in merged_paragraphs:
+                merged_paragraphs.append((page_range, current_chunk.strip()))
             current_chunk = paragraph
             current_pages = [page_number]
 
     # Append the last chunk
-    if current_chunk:
+    if current_chunk and current_chunk not in merged_paragraphs:
         merged_paragraphs.append((page_number, current_chunk.strip()))
 
     return merged_paragraphs
@@ -83,8 +85,8 @@ def extract_text_from_each_document(documents_folder, extracted_text_folder):
 
             # Save each paragraph to an individual text file
             for i, (pages, paragraph) in enumerate(paragraphs):
-                os.makedirs(f"{extracted_text_folder}/{filename.strip(".pdf")}", exist_ok=True)
-                txt_filename = f"{filename.strip(".pdf")}/{os.path.splitext(filename)[0]}_p{i + 1}.txt"
+                os.makedirs(f"{extracted_text_folder}/{filename.strip('.pdf')}", exist_ok=True)
+                txt_filename = f"{filename.strip('.pdf')}/{os.path.splitext(filename)[0]}_p{i + 1}.txt"
                 txt_path = os.path.join(extracted_text_folder, txt_filename)
 
                 with open(txt_path, "w", encoding="utf-8") as txt_file:

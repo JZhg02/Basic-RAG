@@ -27,7 +27,7 @@ index_folder = "data/faiss_vector_base/"
 os.makedirs(index_folder, exist_ok=True) 
 
 api_key = os.environ["MISTRAL_API_KEY"]
-dimension = 768 # Embedding vector size 
+dimension = 768 # Embedding vector size for most models based on BERT 
 top_k = 10  # Number of relevant chunks to retrieve
 
 

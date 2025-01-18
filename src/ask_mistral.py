@@ -1,6 +1,8 @@
 import numpy as np
 from embed_documents import get_text_embedding
-import time
+import os
+
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"  # Suppress error "OMP: Error #15: Initializing libomp140.x86_64.dll, but found libiomp5md.dll already initialized." from FAISS
 
 
 def query_with_context(tokenizer, embeddings_model, question, extracted_text_folder, index, metadata, top_k=5):
@@ -23,7 +25,7 @@ def query_with_context(tokenizer, embeddings_model, question, extracted_text_fol
         if vector_id != -1:  # Ensure the vector ID is valid
             for doc_hash, meta in metadata.items():
                 if meta["vector_id"] == vector_id:
-                    with open(f"{extracted_text_folder}{meta["doc_name"]}/{meta["filename"]}", "r", encoding="utf-8") as file:
+                    with open(f"{extracted_text_folder}{meta['doc_name']}/{meta['filename']}", "r", encoding="utf-8") as file:
                         lines = file.readlines()
                         chunk_content = "".join(lines[2:]).strip()
                     chunk_info = {
@@ -45,7 +47,7 @@ def ask_question(chat_client, tokenizer, embeddings_model, prompt, extracted_tex
     document_names = []
     # print("Relevant Chunks:")
     for chunk in relevant_chunks:
-        contexts += f"Document name: {chunk['doc_name']}\n Pages: {chunk['pages']}\n Content:\n{chunk['chunk']}\n"
+        contexts += f"Document name: {chunk['doc_name']}\nPages: {chunk['pages']}\nContent:\n{chunk['chunk']}\n"
         document_names.append(chunk['doc_name'])
     print(f"Contexts:\n{contexts}")
     print(f"Document names: {document_names}")
