@@ -39,31 +39,48 @@ def query_with_context(tokenizer, embeddings_model, question, extracted_text_fol
     return relevant_chunks
 
 
-def ask_question(chat_client, tokenizer, embeddings_model, prompt, extracted_text_folder, index, metadata, top_k):
+def ask_question(chat_client, tokenizer, embeddings_model, prompt, extracted_text_folder, index, metadata, top_k, chat_history=[]):
 
     relevant_chunks = query_with_context(tokenizer, embeddings_model, prompt, extracted_text_folder, index, metadata, top_k)
     # Display and store retrieved context
     contexts = ""
     document_names = []
-    # print("Relevant Chunks:")
     for chunk in relevant_chunks:
-        contexts += f"Document name: {chunk['doc_name']}\nPages: {chunk['pages']}\nContent:\n{chunk['chunk']}\n"
+        contexts += f"RAG system:\n**The following are document chunks from the database that might help you answer the user's question.**\nDocument name: {chunk['doc_name']}\nPages: {chunk['pages']}\nContent:\n{chunk['chunk']}\n"
         document_names.append(chunk['doc_name'])
-    print(f"Contexts:\n{contexts}")
-    print(f"Document names: {document_names}")
+    # print(f"Contexts:\n{contexts}")
+    # print(f"Document names: {document_names}")
 
-    # Mistral answer with context 
-    chat_response = chat_client.chat.complete(
+    messages = [
+        {
+            "role": "system",
+            "content": f"""You are a cybersecurity expert that will answer question to users. 
+            Always source information using document names and pages. 
+            Pages are very important ! 
+            Do not mention the dcuments from the RAG system as the user SHOULD NOT BE aware of them UNDER ANY CIRCUMSTANCES.""",
+        }
+    ]
+
+    # Append chat history to messages including latest user prompt
+    if chat_history:
+        for message in chat_history:
+            messages.append(message)
+    else: # Append only latest user prompt to messages
+        messages.append({
+            "role": "user",
+            "content": prompt
+        })
+    # Append RAG documents for latest user prompt to messages 
+    for chunk in relevant_chunks:
+        messages.append({
+            "role": "system",
+            "content": contexts
+        })
+
+    # Mistral answer with context
+    stream_response = chat_client.chat.stream(
         model="mistral-large-latest",
-        messages = [
-            {
-                "role": "system",
-                "content": f"You are a cybersecurity expert that will answer question to users. The following are context chunks from the database related to the question:\n{contexts}. Always source information using document names and pages. Do not mention those chunks as the user is not aware of them.",
-            },
-            {
-                "role": "user",
-                "content": prompt,
-            },
-        ]
+        messages = messages
     )
-    return chat_response.choices[0].message.content
+    for chunk in stream_response:
+        yield chunk.data.choices[0].delta.content

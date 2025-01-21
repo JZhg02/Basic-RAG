@@ -60,7 +60,8 @@ def extract_text_by_paragraph(pdf_path, min_chunk_size=512):
             if page_number not in current_pages:
                 current_pages.append(page_number)
         else:
-            current_pages.append(page_number)
+            if page_number not in current_pages:
+                current_pages.append(page_number)
             page_range = f"{current_pages[0]}-{current_pages[-1]}" if len(current_pages) > 1 else str(current_pages[0])
             if current_chunk not in merged_paragraphs:
                 merged_paragraphs.append((page_range, current_chunk.strip()))
@@ -69,7 +70,8 @@ def extract_text_by_paragraph(pdf_path, min_chunk_size=512):
 
     # Append the last chunk
     if current_chunk and current_chunk not in merged_paragraphs:
-        merged_paragraphs.append((page_number, current_chunk.strip()))
+        page_range = f"{current_pages[0]}-{current_pages[-1]}" if len(current_pages) > 1 else str(current_pages[0])
+        merged_paragraphs.append((page_range, current_chunk.strip()))
 
     return merged_paragraphs
 

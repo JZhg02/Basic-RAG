@@ -16,7 +16,12 @@ venv/Scripts/activate
 pip install -r requirements.txt
 ```
 
-## Run code
+## Run streamlit app
+```
+python src/app.py
+```
+
+## Run main
 ```
 python src/main.py
 ```

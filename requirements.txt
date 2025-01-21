@@ -5,3 +5,5 @@ python-dotenv
 pymupdf
 torch
 transformers
+streamlit
+openpyxl

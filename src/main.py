@@ -6,7 +6,6 @@ from mistralai import Mistral
 from dotenv import load_dotenv
 import faiss
 import json
-import time
 from transformers import AutoTokenizer, AutoModel # initializing a Hugging Face model globally in embed_documents.py, and the multiprocessing module conflicts with this
 from transformers import logging
 
@@ -21,10 +20,10 @@ load_dotenv()
 # Config
 documents_folder = "data/documents/"
 extracted_text_folder = "data/extracted_text/"
-os.makedirs(extracted_text_folder, exist_ok=True) # Create the output folder if it doesn't exist
+# os.makedirs(extracted_text_folder, exist_ok=True) # Create the output folder if it doesn't exist
 
 index_folder = "data/faiss_vector_base/"
-os.makedirs(index_folder, exist_ok=True) 
+# os.makedirs(index_folder, exist_ok=True) 
 
 api_key = os.environ["MISTRAL_API_KEY"]
 dimension = 768 # Embedding vector size for most models based on BERT 
@@ -43,13 +42,18 @@ def main():
     tokenizer = AutoTokenizer.from_pretrained("sentence-transformers/multi-qa-mpnet-base-cos-v1")
     model = AutoModel.from_pretrained("sentence-transformers/multi-qa-mpnet-base-cos-v1") 
     
-    pdf_to_text.extract_text_from_each_document(documents_folder=documents_folder, extracted_text_folder=extracted_text_folder)
-    
-    faiss_index_file = os.path.join(index_folder, "faiss_index_with_metadata.bin")
-    metadata_file = os.path.join(index_folder, "metadata.json")
+    # Extract text from each document if not already done
+    if not os.path.isdir(extracted_text_folder):
+        pdf_to_text.extract_text_from_each_document(documents_folder=documents_folder, extracted_text_folder=extracted_text_folder)
 
-    embed_documents.create_faiss_index_and_embeddings_if_not_exists(tokenizer=tokenizer, embeddings_model=model, faiss_index_file=faiss_index_file, metadata_file=metadata_file, extracted_text_folder=extracted_text_folder, dimension=dimension)
-
+    # Create FAISS index if not already done
+    if not os.path.isdir(index_folder):
+        # Create FAISS index and add embeddings
+        embed_documents.create_faiss_index_and_embeddings_if_not_exists(tokenizer=tokenizer, embeddings_model=model, index_folder=index_folder, faiss_index_file=faiss_index_file, metadata_file=metadata_file, extracted_text_folder=extracted_text_folder, dimension=dimension)
+    else:
+        faiss_index_file = os.path.join(index_folder, "faiss_index_with_metadata.bin")
+        metadata_file = os.path.join(index_folder, "metadata.json")
+        
     # Load FAISS index
     if not os.path.exists(faiss_index_file):
         raise FileNotFoundError("FAISS index file not found.")
@@ -61,9 +65,12 @@ def main():
         metadata = json.load(f)
 
     client = Mistral(api_key=api_key)
-    answer = ask_mistral.ask_question(chat_client=client, tokenizer=tokenizer, embeddings_model=model, prompt=prompt, index=index, metadata=metadata, extracted_text_folder=extracted_text_folder, top_k=top_k)
-    print(f"LLM answer:\n{answer}")
+
+    generator = ask_mistral.ask_question(chat_client=client, tokenizer=tokenizer, embeddings_model=model, prompt=prompt, index=index, metadata=metadata, extracted_text_folder=extracted_text_folder, top_k=top_k)
+    full_response = ""
+    for chunk in generator:
+        full_response += chunk
+    print(f"LLM response:\n{full_response}")
 
 if __name__ == "__main__":
     main()
-    
