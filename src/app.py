@@ -82,12 +82,12 @@ def single_question_page(client, tokenizer, model, index, metadata, extracted_te
     st.subheader("Single Question")
 
     # Accept user input
-    question = st.text_input("Ask me anything...")
+    question = st.text_input("Ask me anything.")
 
     # Display assistant response
     if question:
         with st.spinner("Thinking..."):
-            response = ask_mistral.ask_question(
+            response, documents = ask_mistral.ask_question_and_get_sources(
                 chat_client=client, 
                 tokenizer=tokenizer, 
                 embeddings_model=model, 
@@ -97,7 +97,13 @@ def single_question_page(client, tokenizer, model, index, metadata, extracted_te
                 extracted_text_folder=extracted_text_folder, 
                 top_k=top_k
             )
-            st.write(response)
+        st.write(response)
+        # Expanders for all documents
+        st.write("**Retrieved documents:**")
+        for doc in documents:
+            with st.expander(f"Document: {doc['doc_name']}"):
+                st.write(f"Pages: {doc['pages']}")
+                st.write(doc["chunk"])
 
 
 # Page 2: Chat Page
