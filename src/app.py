@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import time 
+import plotly.express as px
 
 import pdf_to_text
 import embed_documents
@@ -45,6 +46,7 @@ def process_excel(file):
     # Example processing: Adding a new column
     df["Processed"] = df.iloc[:, 0].apply(lambda x: f"Processed: {x}")
     return df
+
 
 # RAG initialization
 def initialize_rag():
@@ -152,33 +154,106 @@ def chat_page(client, tokenizer, model, index, metadata, extracted_text_folder, 
 # Page 3: Dataset page
 def dataset_page(client, tokenizer, model, index, metadata, extracted_text_folder, top_k):
     st.subheader("Dataset")
+
+    # Display dataset instructions
+    # Must contain "Questions" and "Answers" columns
+    # "LLM_Answers" will be generated and verified against the "Answers" column
+    st.write("The uploaded file must contain 'Questions' and 'Answers' columns for generating LLM answers.")
     
+    # User mode selection
+    mode = st.selectbox("Choose an action:", ["Generate LLM Answers", "Correct LLM Answers", "Get accuracy"])
+
     # Upload file section
-    uploaded_file = st.file_uploader("Upload data (Excel format)", type=["xlsx", "xls"])
+    uploaded_file = st.file_uploader("Upload file data (Excel format)", type=["xlsx", "xls"])
     
     if uploaded_file is not None:
-        # Display a spinner while processing
-        with st.spinner("Processing the file..."):
-            data = pd.read_excel(uploaded_file, header=0)
-            data["LLM_Answers"] = data["Questions"].apply(
-                lambda x: "".join(
-                    chunk for chunk in ask_mistral.ask_question(
-                        chat_client=client, 
-                        tokenizer=tokenizer, 
-                        embeddings_model=model, 
-                        prompt=x, 
-                        index=index, 
-                        metadata=metadata, 
-                        extracted_text_folder=extracted_text_folder, 
-                        top_k=top_k
-                    )
-                )
-            )
+        
+        # Read the uploaded file
+        data = pd.read_excel(uploaded_file, header=0)
 
-        # Show success message and display the resulting dataframe
-        st.success("File processed successfully!")
-        st.dataframe(data["Questions", "Reponses"])  # Display the dataframe in Streamlit
-    
+        if "generated_answers" not in st.session_state:
+            st.session_state["generated_answers"] = None
+        if "corrected_answers" not in st.session_state:
+            st.session_state["corrected_answers"] = None
+
+        if mode == "Generate LLM Answers":
+            if st.session_state["generated_answers"] is None:
+                with st.spinner("Generating LLM answers..."):
+                    data["LLM_Answers"] = data["Questions"].apply(
+                        lambda x: "".join(
+                            chunk for chunk in ask_mistral.ask_question(chat_client=client, tokenizer=tokenizer, embeddings_model=model, prompt=x, index=index, metadata=metadata, extracted_text_folder=extracted_text_folder, top_k=top_k)
+                        )
+                    )
+                    # Store the generated answers in session_state
+                    st.session_state["generated_answers"] = data.copy()
+                st.success("LLM answers generated successfully!")
+            else:
+                data = st.session_state["generated_answers"]
+        
+            st.dataframe(data)
+            
+            # Option to verify answers after generation
+            if st.button("Correct LLM Answers"):
+                if st.session_state["corrected_answers"] is None:
+                    with st.spinner("Correcting LLM answers..."):
+                        data["Verification"] = data.apply(
+                            lambda row: ask_mistral.is_llm_answer_correct(chat_client=client, question=row["Questions"], answer=row["Answers"], llm_answer=row["LLM_Answers"]), axis=1
+                        )
+                        # Update session state with verified answers
+                        st.session_state["corrected_answers"] = data.copy()
+                    st.success("LLM answers verified successfully!")
+                else:
+                    data = st.session_state["corrected_answers"]
+
+                st.dataframe(data)
+
+                with st.spinner("Computing hallucination rate..."):
+                    # Calculate and display accuracy chart
+                    accuracy = data["Verification"].value_counts()
+                    accuracy_chart = px.pie(
+                        names=["Correct", "Incorrect"],
+                        values=[accuracy.get("Correct", 0), accuracy.get("Incorrect", 0)],
+                        title="LLM Answer Accuracy"
+                    )
+                    st.plotly_chart(accuracy_chart)
+                    # st.write(f"Accuracy: {accuracy.get("Correct", 0) * 100 / len(data)}%")
+                    st.write(f"Hallucination rate: {accuracy.get("Incorrect", 0) * 100 / len(data)}%")
+
+        elif mode == "Correct LLM Answers":
+            with st.spinner("Correcting LLM answers..."):
+                data["Verification"] = data.apply(
+                    lambda row: ask_mistral.is_llm_answer_correct(chat_client=client, question=row["Questions"], answer=row["Answers"], llm_answer=row["LLM_Answers"]), axis=1
+                )
+                # Update session state with verified answers
+                st.session_state["corrected_answers"] = data.copy()
+            st.success("LLM answers verified successfully!")
+
+            st.dataframe(data)
+            with st.spinner("Computing hallucination rate..."):
+                # Calculate and display accuracy chart
+                accuracy = data["Verification"].value_counts()
+                accuracy_chart = px.pie(
+                    names=["Correct", "Incorrect"],
+                    values=[accuracy.get("Correct", 0), accuracy.get("Incorrect", 0)],
+                    title="LLM Answer Accuracy"
+                )
+                st.plotly_chart(accuracy_chart)
+                # st.write(f"Accuracy: {accuracy.get("Correct", 0) * 100 / len(data)}%")
+                st.write(f"Hallucination rate: {accuracy.get("Incorrect", 0) * 100 / len(data)}%")
+
+        elif mode == "Get accuracy":
+            with st.spinner("Computing hallucination rate..."):
+                # Calculate and display accuracy chart
+                accuracy = data["Verification"].value_counts()
+                accuracy_chart = px.pie(
+                    names=["Correct", "Incorrect"],
+                    values=[accuracy.get("Correct", 0), accuracy.get("Incorrect", 0)],
+                    title="LLM Answer Accuracy"
+                )
+                st.plotly_chart(accuracy_chart)
+                # st.write(f"Accuracy: {accuracy.get("Correct", 0) * 100 / len(data)}%")
+                st.write(f"Hallucination rate: {accuracy.get("Incorrect", 0) * 100 / len(data)}%")
+
 
 # Main function with tabs
 def main():
@@ -212,10 +287,9 @@ def main():
     # Sidebar navigation
     with st.sidebar:
         page = st.radio(
-            "Navigation",
-            options=["Single Question", "Chat", "Dataset"]
+            "Pages",
+            options=["Dataset", "Single Question", "Chat"]
         )
-
 
     # Render content based on the selected page
     if page == "Single Question":
