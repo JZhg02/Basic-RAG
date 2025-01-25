@@ -60,9 +60,11 @@ def get_text_embedding(text, tokenizer, model):
 
 
 # Function to create FAISS index and add embeddings
-def create_faiss_index_and_embeddings_if_not_exists(tokenizer, embeddings_model, index_folder, faiss_index_file, metadata_file, extracted_text_folder, dimension):
+def create_faiss_index_and_embeddings_if_not_exists(tokenizer, embeddings_model, index_folder, extracted_text_folder, dimension):
     # Create FAISS index folder if it doesn't exist
     os.makedirs(index_folder, exist_ok=True) 
+    faiss_index_file = os.path.join(index_folder, "faiss_index_with_metadata.bin")
+    metadata_file = os.path.join(index_folder, "metadata.json")
 
     # Initialize or load FAISS index
     if os.path.exists(faiss_index_file):

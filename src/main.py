@@ -49,7 +49,9 @@ def main():
     # Create FAISS index if not already done
     if not os.path.isdir(index_folder):
         # Create FAISS index and add embeddings
-        embed_documents.create_faiss_index_and_embeddings_if_not_exists(tokenizer=tokenizer, embeddings_model=model, index_folder=index_folder, faiss_index_file=faiss_index_file, metadata_file=metadata_file, extracted_text_folder=extracted_text_folder, dimension=dimension)
+        embed_documents.create_faiss_index_and_embeddings_if_not_exists(tokenizer=tokenizer, embeddings_model=model, index_folder=index_folder, extracted_text_folder=extracted_text_folder, dimension=dimension)
+        faiss_index_file = os.path.join(index_folder, "faiss_index_with_metadata.bin")
+        metadata_file = os.path.join(index_folder, "metadata.json")
     else:
         faiss_index_file = os.path.join(index_folder, "faiss_index_with_metadata.bin")
         metadata_file = os.path.join(index_folder, "metadata.json")

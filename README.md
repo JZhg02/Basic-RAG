@@ -18,7 +18,7 @@ pip install -r requirements.txt
 
 ## Run streamlit app
 ```
-python src/app.py
+streamlit run src/app.py
 ```
 
 ## Run main
