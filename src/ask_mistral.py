@@ -6,11 +6,20 @@ import time
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"  # Suppress error "OMP: Error #15: Initializing libomp140.x86_64.dll, but found libiomp5md.dll already initialized." from FAISS
 
 
-def query_with_context(tokenizer, embeddings_model, question, extracted_text_folder, index, metadata, top_k=5):
+def query_with_context(tokenizer, embeddings_model, question, extracted_text_folder, index, metadata, max_distance_threshold, top_k=5): 
     """
     Queries the FAISS index with a question and retrieves relevant chunks with context.
+    
     Args:
+        tokenizer: Tokenizer for embedding model.
+        embeddings_model: The embedding model.
         question (str): The query or question.
+        extracted_text_folder (str): Folder containing extracted text files.
+        index: FAISS index.
+        metadata (dict): Metadata containing vector mappings.
+        max_distance_threshold (float): Maximum allowed distance for relevant results.
+        top_k (int, optional): Number of top results to retrieve. Defaults to 5.
+    
     Returns:
         list of dict: Retrieved chunks with metadata.
     """
@@ -18,21 +27,22 @@ def query_with_context(tokenizer, embeddings_model, question, extracted_text_fol
     question_embedding = get_text_embedding(question, tokenizer=tokenizer, model=embeddings_model)
 
     # Perform similarity search
-    _, indices = index.search(np.array([question_embedding], dtype="float32"), top_k)
+    distances, indices = index.search(np.array([question_embedding], dtype="float32"), top_k)
 
     # Retrieve relevant chunks and metadata
     relevant_chunks = []
-    for vector_id in indices[0]:
-        if vector_id != -1:  # Ensure the vector ID is valid
+    for distance, vector_id in zip(distances[0], indices[0]):
+        if vector_id != -1 and distance >= max_distance_threshold:  # Ensure ID is valid and within threshold
             for doc_hash, meta in metadata.items():
                 if meta["vector_id"] == vector_id:
                     with open(f"{extracted_text_folder}{meta['doc_name']}/{meta['filename']}", "r", encoding="utf-8") as file:
                         lines = file.readlines()
                         chunk_content = "".join(lines[2:]).strip()
                     chunk_info = {
-                        "chunk": chunk_content,  # Load content dynamically
+                        "chunk": chunk_content,
                         "doc_name": meta["doc_name"],
-                        "pages": meta["pages"]
+                        "pages": meta["pages"],
+                        "distance": distance  # Include distance for reference
                     }
                     relevant_chunks.append(chunk_info)
                     break
@@ -40,9 +50,9 @@ def query_with_context(tokenizer, embeddings_model, question, extracted_text_fol
     return relevant_chunks
 
 
-def ask_question(chat_client, tokenizer, embeddings_model, prompt, extracted_text_folder, index, metadata, top_k, chat_history=[]):
+def ask_question(chat_client, tokenizer, embeddings_model, prompt, extracted_text_folder, index, metadata, max_distance_threshold, top_k, chat_history=[]):
 
-    relevant_chunks = query_with_context(tokenizer, embeddings_model, prompt, extracted_text_folder, index, metadata, top_k)
+    relevant_chunks = query_with_context(tokenizer, embeddings_model, prompt, extracted_text_folder, index, metadata, max_distance_threshold, top_k)
     # Display and store retrieved context
     contexts = "RAG system:\n**The following are document chunks from the database that might help you answer the user's question.**\n"
     document_names = []
@@ -86,9 +96,9 @@ def ask_question(chat_client, tokenizer, embeddings_model, prompt, extracted_tex
         yield chunk.data.choices[0].delta.content
 
 
-def ask_question_and_get_sources(chat_client, tokenizer, embeddings_model, prompt, extracted_text_folder, index, metadata, top_k, chat_history=[]):
+def ask_question_and_get_sources(chat_client, tokenizer, embeddings_model, prompt, extracted_text_folder, index, metadata, max_distance_threshold, top_k, chat_history=[]):
 
-    relevant_chunks = query_with_context(tokenizer, embeddings_model, prompt, extracted_text_folder, index, metadata, top_k)
+    relevant_chunks = query_with_context(tokenizer, embeddings_model, prompt, extracted_text_folder, index, metadata, max_distance_threshold, top_k)
     # Display and store retrieved context
     contexts = ""
     document_names = []
@@ -163,10 +173,13 @@ def is_llm_answer_correct(chat_client, question, answer, llm_answer) -> str:
         response_content = chat_response.choices[0].message.content.strip()
         time.sleep(2)  # Sleep for 2 second to avoid rate limiting
         # Determine correctness based on Mistral's reply
-        if response_content.lower().startswith("true"):
-            return "Correct"
+        if response_content.lower().replace("*", "").startswith("true"):
+            response_content.lower().replace("*", "").startswith("true")
+            return "Correct", response_content
+        elif response_content.lower().replace("*", "").startswith("false"):
+            response_content.lower().replace("*", "").startswith("false")
+            return "Incorrect", response_content
         else:
-            return "Incorrect"
+            return "Invalid response", response_content
     except Exception as e:
         print(f"Error while communicating with Mistral: {e}")
-        return False

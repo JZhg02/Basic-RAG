@@ -33,6 +33,7 @@ index_folder = "data/faiss_vector_base/"
 api_key = os.environ["MISTRAL_API_KEY"]
 dimension = 768 # Embedding vector size for most models based on BERT 
 top_k = 10  # Number of relevant chunks to retrieve
+max_distance_threshold = 0.5728583931922913 # Max distance (or min similarity) threshold for relevant chunks
 
 
 # Function to process the uploaded Excel file
@@ -82,7 +83,7 @@ def initialize_rag():
 
 
 # Page 1: Single Question Page
-def single_question_page(client, tokenizer, model, index, metadata, extracted_text_folder, top_k):
+def single_question_page(client, tokenizer, model, index, metadata, extracted_text_folder, max_distance_threshold, top_k):
     st.subheader("Single Question")
 
     # Accept user input
@@ -99,6 +100,7 @@ def single_question_page(client, tokenizer, model, index, metadata, extracted_te
                 index=index, 
                 metadata=metadata, 
                 extracted_text_folder=extracted_text_folder, 
+                max_distance_threshold = max_distance_threshold,
                 top_k=top_k
             )
         st.write(response)
@@ -111,7 +113,7 @@ def single_question_page(client, tokenizer, model, index, metadata, extracted_te
 
 
 # Page 2: Chat Page
-def chat_page(client, tokenizer, model, index, metadata, extracted_text_folder, top_k):
+def chat_page(client, tokenizer, model, index, metadata, extracted_text_folder, max_distance_threshold, top_k):
     st.subheader("Chat")
     
     # Initialize chat history
@@ -143,6 +145,7 @@ def chat_page(client, tokenizer, model, index, metadata, extracted_text_folder, 
                 index=index, 
                 metadata=metadata, 
                 extracted_text_folder=extracted_text_folder, 
+                max_distance_threshold=max_distance_threshold,
                 top_k=top_k,
                 chat_history=st.session_state.messages
             )
@@ -154,7 +157,7 @@ def chat_page(client, tokenizer, model, index, metadata, extracted_text_folder, 
 
 
 # Page 3: Dataset page
-def dataset_page(client, tokenizer, model, index, metadata, extracted_text_folder, top_k):
+def dataset_page(client, tokenizer, model, index, metadata, extracted_text_folder, max_distance_threshold, top_k):
     st.subheader("Dataset")
 
     # Display dataset instructions
@@ -183,7 +186,9 @@ def dataset_page(client, tokenizer, model, index, metadata, extracted_text_folde
                 with st.spinner("Generating LLM answers..."):
                     data["LLM_Answers"] = data["Questions"].apply(
                         lambda x: "".join(
-                            chunk for chunk in ask_mistral.ask_question(chat_client=client, tokenizer=tokenizer, embeddings_model=model, prompt=x, index=index, metadata=metadata, extracted_text_folder=extracted_text_folder, top_k=top_k)
+                            chunk for chunk in ask_mistral.ask_question(
+                                chat_client=client, tokenizer=tokenizer, embeddings_model=model, prompt=x, index=index, metadata=metadata, extracted_text_folder=extracted_text_folder, max_distance_threshold=max_distance_threshold, top_k=top_k
+                            )
                         )
                     )
                     # Store the generated answers in session_state
@@ -198,8 +203,14 @@ def dataset_page(client, tokenizer, model, index, metadata, extracted_text_folde
             if st.button("Correct LLM Answers"):
                 if st.session_state["corrected_answers"] is None:
                     with st.spinner("Correcting LLM answers..."):
-                        data["Verification"] = data.apply(
-                            lambda row: ask_mistral.is_llm_answer_correct(chat_client=client, question=row["Questions"], answer=row["Answers"], llm_answer=row["LLM_Answers"]), axis=1
+                        data[["Verification", "LLM_correction"]] = data.apply(
+                            lambda row: pd.Series(ask_mistral.is_llm_answer_correct(
+                                chat_client=client, 
+                                question=row["Questions"], 
+                                answer=row["Answers"], 
+                                llm_answer=row["LLM_Answers"]
+                            )), 
+                            axis=1
                         )
                         # Update session state with verified answers
                         st.session_state["corrected_answers"] = data.copy()
@@ -223,8 +234,14 @@ def dataset_page(client, tokenizer, model, index, metadata, extracted_text_folde
 
         elif mode == "Correct LLM Answers":
             with st.spinner("Correcting LLM answers..."):
-                data["Verification"] = data.apply(
-                    lambda row: ask_mistral.is_llm_answer_correct(chat_client=client, question=row["Questions"], answer=row["Answers"], llm_answer=row["LLM_Answers"]), axis=1
+                data[["Verification", "LLM_correction"]] = data.apply(
+                    lambda row: pd.Series(ask_mistral.is_llm_answer_correct(
+                        chat_client=client, 
+                        question=row["Questions"], 
+                        answer=row["Answers"], 
+                        llm_answer=row["LLM_Answers"]
+                    )), 
+                    axis=1
                 )
                 # Update session state with verified answers
                 st.session_state["corrected_answers"] = data.copy()
@@ -295,11 +312,11 @@ def main():
 
     # Render content based on the selected page
     if page == "Single Question":
-        single_question_page(client, tokenizer, model, index, metadata, extracted_text_folder, top_k)
+        single_question_page(client, tokenizer, model, index, metadata, extracted_text_folder, max_distance_threshold, top_k)
     elif page == "Chat":
-        chat_page(client, tokenizer, model, index, metadata, extracted_text_folder, top_k)
+        chat_page(client, tokenizer, model, index, metadata, extracted_text_folder, max_distance_threshold, top_k)
     elif page == "Dataset":
-        dataset_page(client, tokenizer, model, index, metadata, extracted_text_folder, top_k)
+        dataset_page(client, tokenizer, model, index, metadata, extracted_text_folder, max_distance_threshold, top_k)
 
 
 if __name__ == "__main__":

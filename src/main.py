@@ -28,7 +28,7 @@ index_folder = "data/faiss_vector_base/"
 api_key = os.environ["MISTRAL_API_KEY"]
 dimension = 768 # Embedding vector size for most models based on BERT 
 top_k = 10  # Number of relevant chunks to retrieve
-
+max_distance_threshold = 0.5728583931922913 # Max distance (or min similarity) threshold for relevant chunks
 
 # ================= User Pormpt ================= 
 prompt = "What are the primary objectives of the HIPAA Security Rule in protecting electronic protected health information (ePHI)?"
@@ -68,7 +68,7 @@ def main():
 
     client = Mistral(api_key=api_key)
 
-    generator = ask_mistral.ask_question(chat_client=client, tokenizer=tokenizer, embeddings_model=model, prompt=prompt, index=index, metadata=metadata, extracted_text_folder=extracted_text_folder, top_k=top_k)
+    generator = ask_mistral.ask_question(chat_client=client, tokenizer=tokenizer, embeddings_model=model, prompt=prompt, index=index, metadata=metadata, extracted_text_folder=extracted_text_folder, max_distance_threshold=max_distance_threshold, top_k=top_k)
     full_response = ""
     for chunk in generator:
         full_response += chunk
