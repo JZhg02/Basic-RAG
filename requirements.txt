@@ -8,3 +8,5 @@ transformers
 streamlit
 openpyxl
 plotly
+matplotlib
+seaborn
