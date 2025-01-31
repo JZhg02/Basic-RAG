@@ -230,7 +230,7 @@ def dataset_page(client, tokenizer, model, index, metadata, extracted_text_folde
                     )
                     st.plotly_chart(accuracy_chart)
                     # st.write(f"Accuracy: {accuracy.get("Correct", 0) * 100 / len(data)}%")
-                    st.write(f"Hallucination rate: {accuracy.get("Incorrect", 0) * 100 / len(data)}%")
+                    st.write(f"Hallucination rate: {accuracy.get('Incorrect', 0) * 100 / len(data):.2f}%")
 
         elif mode == "Correct LLM Answers":
             with st.spinner("Correcting LLM answers..."):

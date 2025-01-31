@@ -156,8 +156,9 @@ def is_llm_answer_correct(chat_client, question, answer, llm_answer) -> str:
     """
 
     # Formulate the prompt to ask Mistral
-    prompt = f"Question: {question}\nReference Answer: {answer}\nLLM Answer: {llm_answer}\nDoes the LLM Answer appropriately respond to the question, given the Reference Answer? Be very thorough. Please respond with 'True' or 'False'."
-    
+    # prompt = f"Question: {question}\nReference Answer: {answer}\nLLM Answer: {llm_answer}\nDoes the LLM Answer appropriately respond to the question, given the Reference Answer? Be very thorough. Please respond with 'True' or 'False'."
+    prompt = f"Question: {question}\nReference Answer: {answer}\nLLM Answer: {llm_answer}\nDoes the LLM Answer appropriately respond to the question, given the Reference Answer? Please respond with 'True' or 'False'."
+
     try:
         chat_response = chat_client.chat.complete(
             model="mistral-large-latest",
@@ -171,7 +172,7 @@ def is_llm_answer_correct(chat_client, question, answer, llm_answer) -> str:
 
         # Extract Mistral's response
         response_content = chat_response.choices[0].message.content.strip()
-        time.sleep(2)  # Sleep for 2 second to avoid rate limiting
+        time.sleep(10)  # Sleep for 2 second to avoid rate limiting
         # Determine correctness based on Mistral's reply
         if response_content.lower().replace("*", "").startswith("true"):
             response_content.lower().replace("*", "").startswith("true")
