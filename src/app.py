@@ -23,11 +23,11 @@ logging.set_verbosity_error()
 load_dotenv()
 
 # Config
-documents_folder = "data/documents/"
-extracted_text_folder = "data/extracted_text/"
+documents_folder = "data-deploy/documents/"
+extracted_text_folder = "data-deploy/extracted_text/"
 # os.makedirs(extracted_text_folder, exist_ok=True) # Create the output folder if it doesn't exist
 
-index_folder = "data/faiss_vector_base/"
+index_folder = "data-deploy/faiss_vector_base/"
 # os.makedirs(index_folder, exist_ok=True) 
 
 api_key = os.environ["MISTRAL_API_KEY"]
