@@ -90,7 +90,8 @@ def ask_question(chat_client, tokenizer, embeddings_model, prompt, extracted_tex
     # Mistral answer with context
     stream_response = chat_client.chat.stream(
         model="mistral-large-latest",
-        messages = messages
+        messages = messages,
+        temperature=0.0,
     )
     for chunk in stream_response:
         yield chunk.data.choices[0].delta.content
@@ -136,7 +137,8 @@ def ask_question_and_get_sources(chat_client, tokenizer, embeddings_model, promp
     # Mistral answer with context
     complete_response = chat_client.chat.complete(
         model="mistral-large-latest",
-        messages = messages
+        messages = messages,
+        temperature=0.0,
     )
     print(complete_response.choices[0].message.content, relevant_chunks)
     return complete_response.choices[0].message.content, relevant_chunks
@@ -168,11 +170,12 @@ def is_llm_answer_correct(chat_client, question, answer, llm_answer) -> str:
                     "content": prompt,
                 },
             ],
+            temperature=0.0,
         )
 
         # Extract Mistral's response
         response_content = chat_response.choices[0].message.content.strip()
-        time.sleep(10)  # Sleep for 2 second to avoid rate limiting
+        time.sleep(4)  # Sleep for 4 second to avoid rate limiting
         # Determine correctness based on Mistral's reply
         if response_content.lower().replace("*", "").startswith("true"):
             response_content.lower().replace("*", "").startswith("true")

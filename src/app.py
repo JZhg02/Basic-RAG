@@ -23,30 +23,17 @@ logging.set_verbosity_error()
 load_dotenv()
 
 # Config
-documents_folder = "data-deploy/documents/"
-extracted_text_folder = "data-deploy/extracted_text/"
+documents_folder = "data/documents/"
+extracted_text_folder = "data/extracted_text/"
 # os.makedirs(extracted_text_folder, exist_ok=True) # Create the output folder if it doesn't exist
 
-index_folder = "data-deploy/faiss_vector_base/"
+index_folder = "data/faiss_vector_base/"
 # os.makedirs(index_folder, exist_ok=True) 
 
 api_key = os.environ["MISTRAL_API_KEY"]
 dimension = 768 # Embedding vector size for most models based on BERT 
 top_k = 10  # Number of relevant chunks to retrieve
-max_distance_threshold = 0.5728583931922913 # Max distance (or min similarity) threshold for relevant chunks
-
-
-# Function to process the uploaded Excel file
-def process_excel(file):
-    """
-    Simulates processing the uploaded Excel file.
-    Replace this with your actual processing logic.
-    """
-    time.sleep(3)  # Simulate a delay in processing
-    df = pd.read_excel(file)  # Read the uploaded file
-    # Example processing: Adding a new column
-    df["Processed"] = df.iloc[:, 0].apply(lambda x: f"Processed: {x}")
-    return df
+max_distance_threshold = 0.5728583931922913 # Max distance (or min similarity) threshold for relevant chunks. Currently using COSINE SIMILARITY 
 
 
 # RAG initialization

@@ -1,27 +1,30 @@
 # Basic-RAG
-Basic RAG with FAISS and Mistral API
+Basic RAG with FAISS and Mistral API (free tier)
 
-## Create a python env
+## Data
+Put documents in data/ folder. Only pdf files are supported at the moment. The present documents are regulatory cybersecurity norms. 
+
+## Running script
+
+### Create a python env
 ```
 python -m venv venv
 ```
 
-## Activate environment
+### Activate environment
 ```
 venv/Scripts/activate
 ```
 
-## Requirements
+### Requirements
 ```
 pip install -r requirements.txt
 ```
 
-## Run streamlit app
+### Run streamlit app or Run main
 ```
 streamlit run src/app.py
 ```
-
-## Run main
 ```
 python src/main.py
 ```

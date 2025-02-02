@@ -1,4 +1,6 @@
-data/
+data/extracted_text
+data/faiss_vector_base
+data/distance_analysis
 .env
 src/__pycache__
 /venv/
