@@ -4,6 +4,12 @@ Basic RAG with FAISS and Mistral API (free tier)
 ## Data
 Put documents in data/ folder. Only pdf files are supported at the moment. The present documents are regulatory cybersecurity norms. 
 
+## Environement variables
+Create .env file at root folder and put in API mistral key 
+```
+MISTRAL_API_KEY = "your-key"
+```
+
 ## Running script
 
 ### Create a python env
